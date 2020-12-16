@@ -196,6 +196,9 @@ async function processVideo() {
         dst = src.roi(rect);
     }
 
+    //frontカメラのため、鏡表示になるよう左右反転
+    cv.flip(dst, dst, 1);
+
     cv.imshow('canvas', dst);
     src.delete();
     adjustVideoSrc.delete();
@@ -207,6 +210,13 @@ async function processVideo() {
 
 async function detectFacemesh() {
     var src = document.getElementById("canvas");
+    
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#32EEDB';
+    ctx.strokeStyle = '#32EEDB';
+    ctx.lineWidth = 0.5;
+
+    detectEyeArea= { x: 0.0, y: 0.0, z: 0.0, w: 0.0, angle: 0.0, distance: 0.0 };
 
     if (facemesh_init == false) {
         //await tf.setBackend('cpu'); //wasm|cpu
@@ -265,13 +275,37 @@ async function detectFacemesh() {
             for (let i = 0; i < face_keypoints.length; i++) {
                 const keypoints = face_keypoints[i].scaledMesh;
 
+                //顔の向きや傾き推定する処理追加
+                //function head_pose_estimation(faces,rightEye,leftEye)
+
                 // Log facial keypoints.
                 for (let i = 0; i < keypoints.length; i++) {
                     const [x, y, z] = keypoints[i];
 
-                    console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
+                    //サングラスは両目の中間のキーポイント168,6の中間座標
+                    if(i == 168 || i == 6){
+                        ctx.beginPath();
+                        ctx.fillStyle = "#FF0000";
+                        ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
+                        ctx.fill();
+
+                        console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
+
+                        //サングラスの中心座標算出
+                        detectEyeArea.x += x;
+                        detectEyeArea.y += y;
+                        detectEyeArea.z += z;
+
+                    }
                 }
             }
+
+            detectEyeArea.x *= 0.5;
+            detectEyeArea.y *= 0.5;
+            detectEyeArea.z *= 0.5;
+            detectEyeArea.distance = Math.sqrt(Math.pow(detectEyeArea.x * 2 - detectEyeArea.x, 2) + Math.pow(detectEyeArea.y * 2 - detectEyeArea.y, 2));
+            console.log("Glass Area:" +  detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
+            console.log("Glass Distance:" +  detectEyeArea.distance);
             detectEyeArea_flag = true;
 
         } else {
@@ -498,106 +532,10 @@ function processARTryOn() {
     }
 
     function renderGlass(model, cylinder, model_info, flag) {
-        //手をグーにしてもらった状態で表示サイズや回転できるよう考慮する(手を開くとサイズ大きくなる)
 
         // パラメータチューニング用変数
-        var defaultModelScale = 0.8;
-        var scaling_rate = 145;
-        var fixModelPositionRate_x = 0.0;
-        var fixModelPositionRate_y = -0.2;
-        var fixRotation = 0.0172;
-
-        //モデル保有情報
-        //model.name
-        //model.visible
-        //model.view
-
-        if (model != null) {
-            //console.log(model);
-            //console.log(model_info);
-            if (flag == true) {
-                /*
-
-                // 1.手首の検出領域(各関節点の直線の長さ)に合わせて３Dモデルの拡大縮小
-                // 各関節点の直線の長さ = 93.396で腕時計のscale:0.8
-                var scaling = model_info.distance / scaling_rate;
-                //console.log("model scaling:" + scaling);
-                model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
-
-                // 2.手首の傾きに応じて腕時計の軸回転
-                var alpha = 1;
-                var beta = 1;
-                if (model_info.angle > 90) {
-                    alpha = -1;
-                    beta = -1;
-                } else if (model_info.angle < 0) {
-                    alpha = -1;
-                }
-
-                //手首回転調整 理想はw=0度で正面、w=-1~-90で上向き回転、1~90で下向き回転、w=±180で裏
-                //fix_w:1~90で上向き回転、-1~-90で下向き回転
-                var fix_w = model_info.w * -1.1;
-                //正面と裏のチラつき防止
-                if (fix_w > 100 || fix_w < -100) fix_w = 0;
-
-                //console.log("hand_w:" + model_info.w);
-                //console.log("fix_w:" + fix_w);
-
-                //上向きベクトルを生成
-                var axis = new THREE.Vector3(); //←---------------------------------（１）
-                var theta = THREE.Math.degToRad(-90 * alpha);　//正面向くように−90固定
-                var phi = THREE.Math.degToRad(model_info.angle * beta); //手首の角度
-                var angle = THREE.Math.degToRad(fix_w); //手首の回転
-                axis.z = Math.cos(theta);
-                axis.x = Math.sin(theta) * Math.cos(phi);
-                axis.y = Math.sin(theta) * Math.sin(phi);
-
-                //console.log("theta:" + theta +", phi:" + model_info.angle + ", angle:" + fixAngle);
-                //オブジェクトの上向きを指定
-                model.lookAt(axis);//←----------回転行列とクォータニオンが更新される（２）
-                //上向きベクトルを回転軸としてangle[rad]回転するクォータニオンを生成
-                q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle); //←（３）
-                //オブジェクトを回転軸周りで回転
-                model.quaternion.multiply(q); //←-----------------------------------（４）
-
-                // 3.手首の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
-                // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
-                //console.log("finger_pos:[", + model_info.x + "," + model_info.y + "]");
-                var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
-                var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
-                //console.log("finger3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
-                //移動座標をパラメータ調整
-                finger3Dx = finger3Dx + fixModelPositionRate_x;
-                finger3Dy = finger3Dy + fixModelPositionRate_y;
-                //console.log("fix_finger3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
-
-                // 4.腕時計を手首の検出座標に移動
-                model.position.set(finger3Dx, finger3Dy, 0.0);
-                //console.log("angle:" + model_info.angle);
-                //console.log("distance:" + model_info.distance);
-
-                // 5.腕時計の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
-                //パラメータ：90:0, 180:1.55→155/90 = 1.72
-                cylinder.scale.set(scaling, scaling, scaling);
-                cylinder.position.set(finger3Dx, finger3Dy - fixModelPositionRate_y, 0.0);
-                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
-                //console.log(cylinder.rotation.z);
-
-                */
-
-                model.visible = true;
-            } else if (flag == false) {
-                model.visible = false;
-                //腕時計のロスト時、表裏状態を初期化
-                model.view = null;
-            }
-        }
-    }
-
-    function renderRing(model, cylinder, model_info, flag) {
-        // パラメータチューニング用変数
-        var defaultModelScale = 0.01;
-        var scaling_rate = 110;
+        var defaultModelScale = 16.2;
+        var scaling_rate = 408;
         var fixModelPositionRate_x = 0.5;
         var fixModelPositionRate_y = 1.0;
         var fixAngle = 40;
@@ -611,29 +549,30 @@ function processARTryOn() {
         if (model != null) {
             //console.log(model);
             //console.log(model_info);
-            if (flag == true) {
-                // 1.指の検出領域(各関節点の直線の長さ)に合わせて３Dモデルの拡大縮小
-                // 各関節点の直線の長さ = 93.396でringのscale:0.01
-                var scaling = model_info.distance / scaling_rate;
+            if (flag == true && model_info.x != 0) {
+                // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
+                // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
+                // 両目の中間2点の直線の長さ = 408でglassのscale:16.2。顔近いほど直線短くなる
+                //var scaling = scaling_rate / model_info.distance;
                 //console.log("model scaling:" + scaling);
-                model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
-                //console.log("finger_pos:[", + model_info.x + "," + model_info.y + "]");
+                console.log("glass pos:[", + model_info.x + "," + model_info.y + "]");
                 var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
                 var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
-                //console.log("finger3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                //console.log("glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
                 //移動座標をパラメータ調整
                 finger3Dx = finger3Dx * fixModelPositionRate_x;
                 finger3Dy = finger3Dy * fixModelPositionRate_y;
-                //console.log("fix_finger3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.指輪を指の検出座標に移動
                 model.position.set(finger3Dx, finger3Dy, 0.0);
                 //console.log("angle:" + model_info.angle);
                 //console.log("distance:" + model_info.distance);
-
+                /*
                 // 4.手首の回転軸に応じて指輪の軸を回転
                 var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
                 //console.log("angle:" + radians);
@@ -682,7 +621,7 @@ function processARTryOn() {
                 cylinder.position.set(finger3Dx, finger3Dy, 0.0);
                 cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
                 //console.log(cylinder.rotation.z);
-
+                */
                 model.visible = true;
             } else if (flag == false) {
                 model.visible = false;
