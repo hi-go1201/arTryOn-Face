@@ -4,7 +4,7 @@ let video = document.getElementById("video");
 
 // Facemesh
 let facemesh_init = false;
-let facemodel, face_keypoints = null;
+let facemodel, headOrientation = null;
 
 let detectEyeArea_flag = false;
 let detectEyeArea = null;
@@ -210,13 +210,13 @@ async function processVideo() {
 
 async function detectFacemesh() {
     var src = document.getElementById("canvas");
-    
+
     var ctx = canvas.getContext('2d');
     ctx.fillStyle = '#32EEDB';
     ctx.strokeStyle = '#32EEDB';
     ctx.lineWidth = 0.5;
 
-    detectEyeArea= { x: 0.0, y: 0.0, z: 0.0, w: 0.0, angle: 0.0, distance: 0.0 };
+    detectEyeArea = { x: 0.0, y: 0.0, z: 0.0, w: 0.0, angle: 0.0, distance: 0.0 };
 
     if (facemesh_init == false) {
         //await tf.setBackend('cpu'); //wasm|cpu
@@ -224,95 +224,147 @@ async function detectFacemesh() {
         // Load the MediaPipe facemesh model.
         facemodel = await facemesh.load();
 
-        // Pass in a video stream (or an image, canvas, or 3D tensor) to obtain an
-        // array of detected faces from the MediaPipe graph.
-        face_keypoints = await facemodel.estimateFaces(src);
-
         facemesh_init = true;
 
         //console.log("canvasInfo:" + document.getElementById("canvas").width + "," + document.getElementById("canvas").height);
 
-    } else {
-        // Pass in a video stream (or an image, canvas, or 3D tensor) to obtain an
-        // array of detected faces from the MediaPipe graph.
-        face_keypoints = await facemodel.estimateFaces(src);
+    }
+    // Pass in a video stream (or an image, canvas, or 3D tensor) to obtain an
+    // array of detected faces from the MediaPipe graph.
+    const predictions = await facemodel.estimateFaces(src);
 
-        //各指の座標から時計用の手首、指輪用の薬指のエリア推測する
-        if (face_keypoints.length > 0) {
-            /*
-            `face_keypoints` is an array of objects describing each detected face, for example:
+    //各指の座標から時計用の手首、指輪用の薬指のエリア推測する
+    if (predictions.length > 0) {
+        /*
+        `predictions` is an array of objects describing each detected face, for example:
 
-            [
-                {
-                    faceInViewConfidence: 1, // The probability of a face being present.
-                    boundingBox: { // The bounding box surrounding the face.
-                        topLeft: [232.28, 145.26],
-                        bottomRight: [449.75, 308.36],
-                    },
-                    mesh: [ // The 3D coordinates of each facial landmark.
-                        [92.07, 119.49, -17.54],
-                        [91.97, 102.52, -30.54],
+        [
+            {
+                faceInViewConfidence: 1, // The probability of a face being present.
+                boundingBox: { // The bounding box surrounding the face.
+                    topLeft: [232.28, 145.26],
+                    bottomRight: [449.75, 308.36],
+                },
+                mesh: [ // The 3D coordinates of each facial landmark.
+                    [92.07, 119.49, -17.54],
+                    [91.97, 102.52, -30.54],
+                    ...
+                ],
+                scaledMesh: [ // The 3D coordinates of each facial landmark, normalized.
+                    [322.32, 297.58, -17.54],
+                    [322.18, 263.95, -30.54]
+                ],
+                annotations: { // Semantic groupings of the `scaledMesh` coordinates.
+                    silhouette: [
+                        [326.19, 124.72, -3.82],
+                        [351.06, 126.30, -3.00],
                         ...
                     ],
-                    scaledMesh: [ // The 3D coordinates of each facial landmark, normalized.
-                        [322.32, 297.58, -17.54],
-                        [322.18, 263.95, -30.54]
-                    ],
-                    annotations: { // Semantic groupings of the `scaledMesh` coordinates.
-                        silhouette: [
-                            [326.19, 124.72, -3.82],
-                            [351.06, 126.30, -3.00],
-                            ...
-                        ],
-                        ...
-                    }
-                }
-            ]
-            */
-            //処理に必要な各指の座標を取得
-            //face mesh map.jpgを参考に取得する。
-            //サングラスは両目の中間のキーポイント？イヤリングは四隅の右端、左端から一定の位置を指定する？
-            for (let i = 0; i < face_keypoints.length; i++) {
-                const keypoints = face_keypoints[i].scaledMesh;
-
-                //顔の向きや傾き推定する処理追加
-                //function head_pose_estimation(faces,rightEye,leftEye)
-
-                // Log facial keypoints.
-                for (let i = 0; i < keypoints.length; i++) {
-                    const [x, y, z] = keypoints[i];
-
-                    //サングラスは両目の中間のキーポイント168,6の中間座標
-                    if(i == 168 || i == 6){
-                        ctx.beginPath();
-                        ctx.fillStyle = "#FF0000";
-                        ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
-                        ctx.fill();
-
-                        console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
-
-                        //サングラスの中心座標算出
-                        detectEyeArea.x += x;
-                        detectEyeArea.y += y;
-                        detectEyeArea.z += z;
-
-                    }
+                    ...
                 }
             }
+        ]
+        */
+        //処理に必要な各指の座標を取得
+        //face mesh map.jpgを参考に取得する。
+        //サングラスは両目の中間のキーポイント？イヤリングは四隅の右端、左端から一定の位置を指定する？
+        for (let i = 0; i < predictions.length; i++) {
+            const keypoints = predictions[i].scaledMesh;
+            const annotations = predictions[i].annotations;
+            const rightEyeLower1 = annotations.rightEyeLower1[8];
+            const leftEyeLower1 = annotations.leftEyeLower1[8];
+            //console.log(annotations);
 
-            detectEyeArea.x *= 0.5;
-            detectEyeArea.y *= 0.5;
-            detectEyeArea.z *= 0.5;
-            detectEyeArea.distance = Math.sqrt(Math.pow(detectEyeArea.x * 2 - detectEyeArea.x, 2) + Math.pow(detectEyeArea.y * 2 - detectEyeArea.y, 2));
-            console.log("Glass Area:" +  detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
-            console.log("Glass Distance:" +  detectEyeArea.distance);
-            detectEyeArea_flag = true;
+            //顔の向きや傾き推定する処理追加
+            headPoseEstimation(annotations.silhouette, rightEyeLower1, leftEyeLower1);
 
-        } else {
-            detectEyeArea_flag = false;
+            // Log facial keypoints.
+            for (let i = 0; i < keypoints.length; i++) {
+                const [x, y, z] = keypoints[i];
+
+                //サングラスは両目の中間のキーポイント168,6の中間座標
+                if (i == 168 || i == 6) {
+                    ctx.beginPath();
+                    ctx.fillStyle = "#FF0000";
+                    ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    //console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
+
+                    //サングラスの中心座標算出
+                    detectEyeArea.x += x;
+                    detectEyeArea.y += y;
+                    detectEyeArea.z += z;
+
+                }
+            }
         }
 
+        detectEyeArea.x *= 0.5;
+        detectEyeArea.y *= 0.5;
+        detectEyeArea.z *= 0.5;
+        detectEyeArea.distance = Math.sqrt(Math.pow(detectEyeArea.x * 2 - detectEyeArea.x, 2) + Math.pow(detectEyeArea.y * 2 - detectEyeArea.y, 2));
+        //console.log("Glass Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
+        //console.log("Glass Distance:" + detectEyeArea.distance);
+        detectEyeArea_flag = true;
+
+    } else {
+        detectEyeArea_flag = false;
     }
+
+
+}
+
+function headPoseEstimation(faces, rightEye, leftEye) {
+
+    const rotate = tf.tidy(() => {
+        const fecePoints = tf.tensor(faces);
+        const eye1 = tf.tensor1d(rightEye);
+        const eye2 = tf.tensor1d(leftEye);
+        const scales = fecePoints.div(tf.norm(eye1.sub(eye2))).mul(0.06);
+        const centered = scales.sub(scales.mean(axis = 0));
+
+        const c00 = centered.slice(0, 1).as1D();
+        const c09 = centered.slice(9, 1).as1D();
+        const c18 = centered.slice(18, 1).as1D();
+        const c27 = centered.slice(27, 1).as1D();
+
+        const rotate0 = c18.sub(c00).div(tf.norm(c18.sub(c00)));
+        const rotate1 = c09.sub(c27).div(tf.norm(c09.sub(c27)));
+
+        return tf.concat([rotate0, rotate1]).arraySync();
+    });
+
+    const m00 = rotate[0];
+    const m01 = rotate[1];
+    const m02 = rotate[2];
+
+    const m10 = rotate[3];
+    const m11 = rotate[4];
+    const m12 = rotate[5];
+
+    // cross product
+    const m20 = m01 * m12 - m02 * m11;
+    const m21 = m02 * m10 - m00 * m12;
+    const m22 = m00 * m11 - m01 * m10;
+
+    let yaw, pitch, roll;
+    let sy = Math.sqrt(m00 * m00 + m10 * m10);
+    let singular = sy < 10 ** -6;
+
+    if (!singular) {
+        yaw = Math.atan2(m21, m22);
+        pitch = Math.atan2(-m20, sy);
+        roll = Math.atan2(m10, m00);
+    } else {
+        yaw = Math.atan2(-m12, m11);
+        pitch = Math.atan2(-m20, sy);
+        roll = 0;
+    }
+
+    headOrientation = {yaw:yaw + Math.PI, pitch:pitch, roll:-(roll - Math.PI / 2)};
+    console.log("yaw:" + yaw + ", pitch:" + pitch + ", roll:" + roll);
+
 }
 
 //2本の指の各関節位置を基準に指の平均回転角度w算出
@@ -536,8 +588,8 @@ function processARTryOn() {
         // パラメータチューニング用変数
         var defaultModelScale = 16.2;
         var scaling_rate = 408;
-        var fixModelPositionRate_x = 0.5;
-        var fixModelPositionRate_y = 1.0;
+        var fixModelPositionRate_x = 0.4;
+        var fixModelPositionRate_y = -0.05;
         var fixAngle = 40;
         var fixRotation = 0.0172;
 
@@ -559,19 +611,24 @@ function processARTryOn() {
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
-                console.log("glass pos:[", + model_info.x + "," + model_info.y + "]");
+                //console.log("glass pos:[", + model_info.x + "," + model_info.y + "]");
                 var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
                 var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
                 //console.log("glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
                 //移動座標をパラメータ調整
                 finger3Dx = finger3Dx * fixModelPositionRate_x;
-                finger3Dy = finger3Dy * fixModelPositionRate_y;
-                console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                finger3Dy = finger3Dy + fixModelPositionRate_y;
+                //console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.指輪を指の検出座標に移動
-                model.position.set(finger3Dx, finger3Dy, 0.0);
+                model.position.set(finger3Dx, finger3Dy, 0.1);
                 //console.log("angle:" + model_info.angle);
                 //console.log("distance:" + model_info.distance);
+
+                // 4.顔の向きに応じてサングラスを回転
+                model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
+
+
                 /*
                 // 4.手首の回転軸に応じて指輪の軸を回転
                 var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
