@@ -588,7 +588,7 @@ function processARTryOn() {
         // パラメータチューニング用変数
         var defaultModelScale = 16.2;
         var scaling_rate = 408;
-        var fixModelPositionRate_x = 0.4;
+        var fixModelPositionRate_x = 0.3;
         var fixModelPositionRate_y = -0.05;
         var fixAngle = 40;
         var fixRotation = 0.0172;
@@ -621,7 +621,7 @@ function processARTryOn() {
                 //console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.指輪を指の検出座標に移動
-                model.position.set(finger3Dx, finger3Dy, 0.1);
+                model.position.set(finger3Dx, finger3Dy, 0.0);
                 //console.log("angle:" + model_info.angle);
                 //console.log("distance:" + model_info.distance);
 
