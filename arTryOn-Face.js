@@ -284,10 +284,10 @@ async function detectFacemesh() {
 
                 //サングラスは両目の中間のキーポイント168,6の中間座標
                 if (i == 168 || i == 6) {
-                    ctx.beginPath();
-                    ctx.fillStyle = "#FF0000";
-                    ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
-                    ctx.fill();
+                    //ctx.beginPath();
+                    //ctx.fillStyle = "#FF0000";
+                    //ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
+                    //ctx.fill();
 
                     //console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
 
