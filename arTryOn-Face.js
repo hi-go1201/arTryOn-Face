@@ -444,7 +444,7 @@ function processARTryOn() {
     
     //腕時計(loadに時間かかるので初期値null)
     var model_SunGlasses = null;
-    loader.load('./obj/sunglasses_light.glb',
+    loader.load('./obj/sunglasses.glb',
         function (gltf) {
             model_SunGlasses = gltf.scene; // THREE.Group
             model_SunGlasses.name = "SunGlasses"
