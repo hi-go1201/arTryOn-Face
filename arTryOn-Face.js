@@ -475,12 +475,12 @@ function processARTryOn() {
 
     //腕時計(loadに時間かかるので初期値null)
     var model_glass = null;
-    loader.load('./obj/glass.glb',
+    loader.load('./obj/roundglasses.glb',
         function (gltf) {
             model_glass = gltf.scene; // THREE.Group
             model_glass.name = "Glass"
             model_glass.visible = false;
-            model_glass.scale.set(16.2, 16.2, 16.2);
+            model_glass.scale.set(0.05, 0.05, 0.05);
             model_glass.position.set(0.0, 0.0, 0.0);
             model_glass.rotation.x = 0.0;
             model_glass.rotation.y = 0.0;
@@ -588,8 +588,8 @@ function processARTryOn() {
         // パラメータチューニング用変数
         var defaultModelScale = 16.2;
         var scaling_rate = 408;
-        var fixModelPositionRate_x = 0.3;
-        var fixModelPositionRate_y = -0.05;
+        var fixModelPositionRate_x = 0.2;
+        var fixModelPositionRate_y = -0.12;
         var fixAngle = 40;
         var fixRotation = 0.0172;
 
@@ -617,7 +617,7 @@ function processARTryOn() {
                 //console.log("glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
                 //移動座標をパラメータ調整
                 finger3Dx = finger3Dx * fixModelPositionRate_x;
-                finger3Dy = finger3Dy + fixModelPositionRate_y;
+                finger3Dy = finger3Dy * 0.5 + fixModelPositionRate_y;
                 //console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.指輪を指の検出座標に移動
