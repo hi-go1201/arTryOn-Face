@@ -61,7 +61,7 @@ let facemesh_annotations = {
 };
 
 // AR Try On Select
-let arTryOnSelect = "glass";
+let arTryOnSelect = "Glasses";
 
 function opencvIsReady() {
     console.log('OpenCV.js is ready');
@@ -304,8 +304,8 @@ async function detectFacemesh() {
         detectEyeArea.y *= 0.5;
         detectEyeArea.z *= 0.5;
         detectEyeArea.distance = Math.sqrt(Math.pow(detectEyeArea.x * 2 - detectEyeArea.x, 2) + Math.pow(detectEyeArea.y * 2 - detectEyeArea.y, 2));
-        //console.log("Glass Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
-        //console.log("Glass Distance:" + detectEyeArea.distance);
+        //console.log("Glasses Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
+        //console.log("Glasses Distance:" + detectEyeArea.distance);
         detectEyeArea_flag = true;
 
     } else {
@@ -362,7 +362,7 @@ function headPoseEstimation(faces, rightEye, leftEye) {
         roll = 0;
     }
 
-    headOrientation = {yaw:yaw + Math.PI, pitch:pitch, roll:-(roll - Math.PI / 2)};
+    headOrientation = { yaw: yaw + Math.PI, pitch: pitch, roll: -(roll - Math.PI / 2) };
     console.log("yaw:" + yaw + ", pitch:" + pitch + ", roll:" + roll);
 
 }
@@ -474,23 +474,73 @@ function processARTryOn() {
     const loader = new THREE.GLTFLoader();
 
     //腕時計(loadに時間かかるので初期値null)
-    var model_glass = null;
-    loader.load('./obj/roundglasses.glb',
+    var model_Glasses = null;
+    loader.load('./obj/glasses.glb',
         function (gltf) {
-            model_glass = gltf.scene; // THREE.Group
-            model_glass.name = "Glass"
-            model_glass.visible = false;
-            model_glass.scale.set(0.05, 0.05, 0.05);
-            model_glass.position.set(0.0, 0.0, 0.0);
-            model_glass.rotation.x = 0.0;
-            model_glass.rotation.y = 0.0;
-            model_glass.rotation.z = 0.0;
-            model_glass.view = null;
-            scene.add(model_glass);
+            model_Glasses = gltf.scene; // THREE.Group
+            model_Glasses.name = "Glasses"
+            model_Glasses.visible = false;
+            model_Glasses.scale.set(0.056, 0.056, 0.056);
+            model_Glasses.position.set(0.0, 0.0, 0.0);
+            model_Glasses.rotation.x = 0.0;
+            model_Glasses.rotation.y = 0.0;
+            model_Glasses.rotation.z = 0.0;
+            model_Glasses.view = null;
+            scene.add(model_Glasses);
         },
         // called while loading is progressing
         function (xhr) {
-            console.log('Glass: ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+            console.log('Glasses: ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        // called when loading has errors
+        function (error) {
+            console.log('An error happened');
+        }
+    );
+    
+    //腕時計(loadに時間かかるので初期値null)
+    var model_RoundGlasses = null;
+    loader.load('./obj/roundglasses.glb',
+        function (gltf) {
+            model_RoundGlasses = gltf.scene; // THREE.Group
+            model_RoundGlasses.name = "RoundGlasses"
+            model_RoundGlasses.visible = false;
+            model_RoundGlasses.scale.set(0.05, 0.05, 0.05);
+            model_RoundGlasses.position.set(0.0, 0.0, 0.0);
+            model_RoundGlasses.rotation.x = 0.0;
+            model_RoundGlasses.rotation.y = 0.0;
+            model_RoundGlasses.rotation.z = 0.0;
+            model_RoundGlasses.view = null;
+            scene.add(model_RoundGlasses);
+        },
+        // called while loading is progressing
+        function (xhr) {
+            console.log('RoundGlasses: ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        // called when loading has errors
+        function (error) {
+            console.log('An error happened');
+        }
+    );
+    
+    //腕時計(loadに時間かかるので初期値null)
+    var model_SunGlasses = null;
+    loader.load('./obj/sunglasses.glb',
+        function (gltf) {
+            model_SunGlasses = gltf.scene; // THREE.Group
+            model_SunGlasses.name = "SunGlasses"
+            model_SunGlasses.visible = false;
+            model_SunGlasses.scale.set(0.08, 0.08, 0.08);
+            model_SunGlasses.position.set(0.0, 0.0, 0.0);
+            model_SunGlasses.rotation.x = 0.0;
+            model_SunGlasses.rotation.y = 0.0;
+            model_SunGlasses.rotation.z = 0.0;
+            model_SunGlasses.view = null;
+            scene.add(model_SunGlasses);
+        },
+        // called while loading is progressing
+        function (xhr) {
+            console.log('SunGlasses: ' + (xhr.loaded / xhr.total * 100) + '% loaded');
         },
         // called when loading has errors
         function (error) {
@@ -564,10 +614,26 @@ function processARTryOn() {
         //試着対象判定
         arTryOnSelect = document.getElementById("arTryOnSelect").value;
         switch (arTryOnSelect) {
-            case "glass":
+
+            case "Glasses":
                 //AR腕時計試着
-                //if (model_Ring != null && model_Ring.visible == true) model_Ring.visible = false;
-                renderGlass(model_glass, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                if (model_RoundGlasses != null && model_RoundGlasses.visible == true) model_RoundGlasses.visible = false;
+                if (model_SunGlasses != null && model_SunGlasses.visible == true) model_SunGlasses.visible = false;
+                renderGlasses(model_Glasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                break;
+
+            case "RoundGlasses":
+                //AR腕時計試着
+                if (model_Glasses != null && model_Glasses.visible == true) model_Glasses.visible = false;
+                if (model_SunGlasses != null && model_SunGlasses.visible == true) model_SunGlasses.visible = false;
+                renderRoundGlasses(model_RoundGlasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                break;
+
+            case "SunGlasses":
+                //AR腕時計試着
+                if (model_Glasses != null && model_Glasses.visible == true) model_Glasses.visible = false;
+                if (model_RoundGlasses != null && model_RoundGlasses.visible == true) model_RoundGlasses.visible = false;
+                renderSunGlasses(model_SunGlasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
                 break;
 
             default:
@@ -583,7 +649,112 @@ function processARTryOn() {
         requestAnimationFrame(render);
     }
 
-    function renderGlass(model, cylinder, model_info, flag) {
+    function renderGlasses(model, cylinder, model_info, flag) {
+
+        // パラメータチューニング用変数
+        var defaultModelScale = 16.2;
+        var scaling_rate = 408;
+        var fixModelPositionRate_x = 0.28;
+        var fixModelPositionRate_y = -0.1;
+        var fixAngle = 40;
+        var fixRotation = 0.0172;
+
+        //モデル保有情報
+        //model.name
+        //model.visible
+        //model.view
+
+        if (model != null) {
+            //console.log(model);
+            //console.log(model_info);
+            if (flag == true && model_info.x != 0) {
+                // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
+                // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
+                // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
+                //var scaling = scaling_rate / model_info.distance;
+                //console.log("model scaling:" + scaling);
+                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+
+                // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
+                // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
+                //console.log("Glasses pos:[", + model_info.x + "," + model_info.y + "]");
+                var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
+                var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
+                //console.log("Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                //移動座標をパラメータ調整
+                finger3Dx = finger3Dx * fixModelPositionRate_x;
+                finger3Dy = finger3Dy * 0.5 + fixModelPositionRate_y;
+                //console.log("fix_Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+
+                // 3.指輪を指の検出座標に移動
+                model.position.set(finger3Dx, finger3Dy, 0.0);
+                //console.log("angle:" + model_info.angle);
+                //console.log("distance:" + model_info.distance);
+
+                // 4.顔の向きに応じてサングラスを回転
+                model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
+
+
+                /*
+                // 4.手首の回転軸に応じて指輪の軸を回転
+                var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
+                //console.log("angle:" + radians);
+
+                var axis = new THREE.Vector3(-1, -1, -1);
+                var rotWorldMatrix = new THREE.Matrix4();
+                rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
+                rotWorldMatrix.multiply(model.matrix);
+                model.matrix = rotWorldMatrix;
+                model.quaternion.setFromAxisAngle(axis, radians);
+
+                // 5.指の回転角度に応じて指輪回転
+                //指輪の認識復帰時に表裏状態設定(指輪正面-180度、後ろ0度、可動範囲-180~180度)
+                if (model.view == null && Math.abs(model_info.w) >= 0.5 && Math.abs(model_info.w) <= 60) {
+                    model.view = 'rear';
+                } else if (model.view == null && Math.abs(model_info.w) >= 120 && Math.abs(model_info.w) <= 180) {
+                    model.view = 'front';
+                }
+                //console.log("Ring_status:" + model.view);
+                //console.log("hand_w:" + model_info.w);
+
+                //rear時はfrontにさせない
+                if (model.view == 'rear') {
+                    if (Math.abs(model_info.w) >= 0 && Math.abs(model_info.w) <= 60) {
+                        model.rotation.z = THREE.Math.degToRad(model_info.w);
+                    } else {
+                        model.rotation.z = 0.00;
+                    }
+                }
+                //front時はrearにさせない
+                if (model.view == 'front') {
+                    if (Math.abs(model_info.w) >= 70 && Math.abs(model_info.w) <= 180) {
+                        model.rotation.z = THREE.Math.degToRad(model_info.w);
+                    } else {
+                        model.rotation.z = 3.15;
+                    }
+                }
+                //console.log("rotated_ring_z:" + model.rotation.z);
+
+
+                //console.log("model_Ring scale:" + model.scale.x);
+
+                // 6.指輪の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
+                //パラメータ：90:0, 180:1.55→155/90 = 1.72
+                cylinder.scale.set(scaling, scaling, scaling);
+                cylinder.position.set(finger3Dx, finger3Dy, 0.0);
+                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
+                //console.log(cylinder.rotation.z);
+                */
+                model.visible = true;
+            } else if (flag == false) {
+                model.visible = false;
+                //指輪のロスト時、表裏状態を初期化
+                model.view = null;
+            }
+        }
+    }
+
+    function renderRoundGlasses(model, cylinder, model_info, flag) {
 
         // パラメータチューニング用変数
         var defaultModelScale = 16.2;
@@ -604,21 +775,126 @@ function processARTryOn() {
             if (flag == true && model_info.x != 0) {
                 // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
                 // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
-                // 両目の中間2点の直線の長さ = 408でglassのscale:16.2。顔近いほど直線短くなる
+                // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
                 //var scaling = scaling_rate / model_info.distance;
                 //console.log("model scaling:" + scaling);
                 //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
-                //console.log("glass pos:[", + model_info.x + "," + model_info.y + "]");
+                //console.log("Glasses pos:[", + model_info.x + "," + model_info.y + "]");
                 var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
                 var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
-                //console.log("glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                //console.log("Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
                 //移動座標をパラメータ調整
                 finger3Dx = finger3Dx * fixModelPositionRate_x;
                 finger3Dy = finger3Dy * 0.5 + fixModelPositionRate_y;
-                //console.log("fix_glass 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                //console.log("fix_Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+
+                // 3.指輪を指の検出座標に移動
+                model.position.set(finger3Dx, finger3Dy, 0.0);
+                //console.log("angle:" + model_info.angle);
+                //console.log("distance:" + model_info.distance);
+
+                // 4.顔の向きに応じてサングラスを回転
+                model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
+
+
+                /*
+                // 4.手首の回転軸に応じて指輪の軸を回転
+                var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
+                //console.log("angle:" + radians);
+
+                var axis = new THREE.Vector3(-1, -1, -1);
+                var rotWorldMatrix = new THREE.Matrix4();
+                rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
+                rotWorldMatrix.multiply(model.matrix);
+                model.matrix = rotWorldMatrix;
+                model.quaternion.setFromAxisAngle(axis, radians);
+
+                // 5.指の回転角度に応じて指輪回転
+                //指輪の認識復帰時に表裏状態設定(指輪正面-180度、後ろ0度、可動範囲-180~180度)
+                if (model.view == null && Math.abs(model_info.w) >= 0.5 && Math.abs(model_info.w) <= 60) {
+                    model.view = 'rear';
+                } else if (model.view == null && Math.abs(model_info.w) >= 120 && Math.abs(model_info.w) <= 180) {
+                    model.view = 'front';
+                }
+                //console.log("Ring_status:" + model.view);
+                //console.log("hand_w:" + model_info.w);
+
+                //rear時はfrontにさせない
+                if (model.view == 'rear') {
+                    if (Math.abs(model_info.w) >= 0 && Math.abs(model_info.w) <= 60) {
+                        model.rotation.z = THREE.Math.degToRad(model_info.w);
+                    } else {
+                        model.rotation.z = 0.00;
+                    }
+                }
+                //front時はrearにさせない
+                if (model.view == 'front') {
+                    if (Math.abs(model_info.w) >= 70 && Math.abs(model_info.w) <= 180) {
+                        model.rotation.z = THREE.Math.degToRad(model_info.w);
+                    } else {
+                        model.rotation.z = 3.15;
+                    }
+                }
+                //console.log("rotated_ring_z:" + model.rotation.z);
+
+
+                //console.log("model_Ring scale:" + model.scale.x);
+
+                // 6.指輪の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
+                //パラメータ：90:0, 180:1.55→155/90 = 1.72
+                cylinder.scale.set(scaling, scaling, scaling);
+                cylinder.position.set(finger3Dx, finger3Dy, 0.0);
+                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
+                //console.log(cylinder.rotation.z);
+                */
+                model.visible = true;
+            } else if (flag == false) {
+                model.visible = false;
+                //指輪のロスト時、表裏状態を初期化
+                model.view = null;
+            }
+        }
+    }
+
+    function renderSunGlasses(model, cylinder, model_info, flag) {
+
+        // パラメータチューニング用変数
+        var defaultModelScale = 16.2;
+        var scaling_rate = 408;
+        var fixModelPositionRate_x = 0.4;
+        var fixModelPositionRate_y = -0.12;
+        var fixAngle = 40;
+        var fixRotation = 0.0172;
+
+        //モデル保有情報
+        //model.name
+        //model.visible
+        //model.view
+
+        if (model != null) {
+            //console.log(model);
+            //console.log(model_info);
+            if (flag == true && model_info.x != 0) {
+                // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
+                // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
+                // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
+                //var scaling = scaling_rate / model_info.distance;
+                //console.log("model scaling:" + scaling);
+                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+
+                // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
+                // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
+                //console.log("Glasses pos:[", + model_info.x + "," + model_info.y + "]");
+                var finger3Dx = (model_info.x * 2 / window.innerWidth) - 1.0;
+                var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
+                //console.log("Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
+                //移動座標をパラメータ調整
+                finger3Dx = finger3Dx * fixModelPositionRate_x;
+                finger3Dy = finger3Dy + fixModelPositionRate_y;
+                //console.log("fix_Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.指輪を指の検出座標に移動
                 model.position.set(finger3Dx, finger3Dy, 0.0);
