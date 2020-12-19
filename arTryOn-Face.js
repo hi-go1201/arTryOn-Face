@@ -9,11 +9,6 @@ let facemodel, headOrientation = null;
 let detectEyeArea_flag = false;
 let detectEyeArea = null;
 
-let detectRingArea_flag = false;
-let detectRingArea = null;
-
-let detectMiddleFingerArea, detectPinkyFingerArea = null;
-
 // Facemesh annotations Info (Not Used) MESH_ANNOTATIONS: {[key: string]: number[]}
 let facemesh_annotations = {
     silhouette: [
@@ -367,82 +362,6 @@ function headPoseEstimation(faces, rightEye, leftEye) {
 
 }
 
-//2本の指の各関節位置を基準に指の平均回転角度w算出
-function calcHandRotate(finger1, finger2) {
-    //パラメータチューニング用変数
-    var alpha = 1.0;
-
-    //人差し指
-    var finger1_x0 = finger1[0][0];
-    var finger1_x1 = finger1[1][0];
-    var finger1_x2 = finger1[2][0];
-    var finger1_x3 = finger1[3][0];
-    var finger1_z0 = finger1[0][2];
-    var finger1_z1 = finger1[1][2];
-    var finger1_z2 = finger1[2][2];
-    var finger1_z3 = finger1[3][2];
-    //薬指
-    var finger2_x0 = finger2[0][0];
-    var finger2_x1 = finger2[1][0];
-    var finger2_x2 = finger2[2][0];
-    var finger2_x3 = finger2[3][0];
-    var finger2_z0 = finger2[0][2];
-    var finger2_z1 = finger2[1][2];
-    var finger2_z2 = finger2[2][2];
-    var finger2_z3 = finger2[3][2];
-
-    //人差し指と薬指の各関節位置を基準に指の平均回転角度w算出
-    var w_0 = Math.atan2(finger1_z0 - finger2_z0, finger1_x0 - finger2_x0) * (180 / Math.PI);
-    var w_1 = Math.atan2(finger1_z1 - finger2_z1, finger1_x1 - finger2_x1) * (180 / Math.PI);
-    var w_2 = Math.atan2(finger1_z2 - finger2_z2, finger1_x2 - finger2_x2) * (180 / Math.PI);
-    var w_3 = Math.atan2(finger1_z3 - finger2_z3, finger1_x3 - finger2_x3) * (180 / Math.PI);
-
-    var avg_w = (w_0 + w_1 + w_2 + w_3) / 4;
-    //wの増減量が少なければalpha倍にする
-    var fix_w = avg_w * alpha;
-    //console.log("avg_w:" + avg_w + ", fix_w:" + fix_w);
-    return fix_w;
-}
-
-//手首の座標/傾き/スケール(距離)推測：中指とpalmの2点を直線で結び、その延長線上に手首
-function detectHandWatchPos(annotations) {
-    //1.中指とpalmの距離distanceと角度rotate
-    var x1 = annotations.middleFinger[3][0];
-    var y1 = annotations.middleFinger[3][1];
-    var x2 = annotations.palmBase[0][0];
-    var y2 = annotations.palmBase[0][1];
-    var distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-    var radian = Math.atan2(y2 - y1, x2 - x1);
-    var angle = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
-
-    //2.distanceを一定間隔伸ばし、その先の手首座標
-    var target_x = x2 + (distance * 0.2) * Math.cos(radian);
-    var target_y = y2 + (distance * 0.2) * Math.sin(radian);
-    //console.log("HandWatch_x:" + target_x + ", HandWatch_y:" + target_y + ", HandWatch_distance:" + distance + ", HandWatch_angle:" + angle);
-    return { x: target_x, y: target_y, angle: angle, distance: distance };
-}
-
-//指輪の座標/傾き/深度/スケール(距離)推測：該当する指の根元に近い関節2点を直線で結び、中点に指輪
-function detectRingPos(finger) {
-    //1.該当する指の根元に近い関節2点の距離distanceと角度rotate
-    var x1 = finger[1][0];
-    var y1 = finger[1][1];
-    var z1 = finger[1][2];
-    var x2 = finger[0][0];
-    var y2 = finger[0][1];
-    var z2 = finger[0][2];
-
-    var distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-    var angle = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
-
-    //2.該当する指の根元に近い関節2点を結んだ直線の中点が指輪座標
-    var target_x = (x1 + x2) * 0.5;
-    var target_y = (y1 + y2) * 0.5;
-    var target_z = (z1 + z2) * 0.5;
-    //console.log("target_x:" + target_x + ", target_y:" + target_y + ", target_z:" + target_z + ", target_distance:" + distance + ", target_angle:" + angle);
-    return { x: target_x, y: target_y, z: target_z, angle: angle, distance: distance };
-}
-
 function processARTryOn() {
     // Stats
     const stats = new Stats();
@@ -475,7 +394,7 @@ function processARTryOn() {
 
     //腕時計(loadに時間かかるので初期値null)
     var model_Glasses = null;
-    loader.load('./obj/glasses.glb',
+    loader.load('./obj/glasses_light.glb',
         function (gltf) {
             model_Glasses = gltf.scene; // THREE.Group
             model_Glasses.name = "Glasses"
@@ -500,7 +419,7 @@ function processARTryOn() {
     
     //腕時計(loadに時間かかるので初期値null)
     var model_RoundGlasses = null;
-    loader.load('./obj/roundglasses.glb',
+    loader.load('./obj/roundglasses_light.glb',
         function (gltf) {
             model_RoundGlasses = gltf.scene; // THREE.Group
             model_RoundGlasses.name = "RoundGlasses"
@@ -525,7 +444,7 @@ function processARTryOn() {
     
     //腕時計(loadに時間かかるので初期値null)
     var model_SunGlasses = null;
-    loader.load('./obj/sunglasses.glb',
+    loader.load('./obj/sunglasses_light.glb',
         function (gltf) {
             model_SunGlasses = gltf.scene; // THREE.Group
             model_SunGlasses.name = "SunGlasses"
@@ -694,62 +613,9 @@ function processARTryOn() {
                 // 4.顔の向きに応じてサングラスを回転
                 model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
 
-
-                /*
-                // 4.手首の回転軸に応じて指輪の軸を回転
-                var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
-                //console.log("angle:" + radians);
-
-                var axis = new THREE.Vector3(-1, -1, -1);
-                var rotWorldMatrix = new THREE.Matrix4();
-                rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
-                rotWorldMatrix.multiply(model.matrix);
-                model.matrix = rotWorldMatrix;
-                model.quaternion.setFromAxisAngle(axis, radians);
-
-                // 5.指の回転角度に応じて指輪回転
-                //指輪の認識復帰時に表裏状態設定(指輪正面-180度、後ろ0度、可動範囲-180~180度)
-                if (model.view == null && Math.abs(model_info.w) >= 0.5 && Math.abs(model_info.w) <= 60) {
-                    model.view = 'rear';
-                } else if (model.view == null && Math.abs(model_info.w) >= 120 && Math.abs(model_info.w) <= 180) {
-                    model.view = 'front';
-                }
-                //console.log("Ring_status:" + model.view);
-                //console.log("hand_w:" + model_info.w);
-
-                //rear時はfrontにさせない
-                if (model.view == 'rear') {
-                    if (Math.abs(model_info.w) >= 0 && Math.abs(model_info.w) <= 60) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 0.00;
-                    }
-                }
-                //front時はrearにさせない
-                if (model.view == 'front') {
-                    if (Math.abs(model_info.w) >= 70 && Math.abs(model_info.w) <= 180) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 3.15;
-                    }
-                }
-                //console.log("rotated_ring_z:" + model.rotation.z);
-
-
-                //console.log("model_Ring scale:" + model.scale.x);
-
-                // 6.指輪の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
-                //パラメータ：90:0, 180:1.55→155/90 = 1.72
-                cylinder.scale.set(scaling, scaling, scaling);
-                cylinder.position.set(finger3Dx, finger3Dy, 0.0);
-                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
-                //console.log(cylinder.rotation.z);
-                */
                 model.visible = true;
             } else if (flag == false) {
                 model.visible = false;
-                //指輪のロスト時、表裏状態を初期化
-                model.view = null;
             }
         }
     }
@@ -799,62 +665,9 @@ function processARTryOn() {
                 // 4.顔の向きに応じてサングラスを回転
                 model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
 
-
-                /*
-                // 4.手首の回転軸に応じて指輪の軸を回転
-                var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
-                //console.log("angle:" + radians);
-
-                var axis = new THREE.Vector3(-1, -1, -1);
-                var rotWorldMatrix = new THREE.Matrix4();
-                rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
-                rotWorldMatrix.multiply(model.matrix);
-                model.matrix = rotWorldMatrix;
-                model.quaternion.setFromAxisAngle(axis, radians);
-
-                // 5.指の回転角度に応じて指輪回転
-                //指輪の認識復帰時に表裏状態設定(指輪正面-180度、後ろ0度、可動範囲-180~180度)
-                if (model.view == null && Math.abs(model_info.w) >= 0.5 && Math.abs(model_info.w) <= 60) {
-                    model.view = 'rear';
-                } else if (model.view == null && Math.abs(model_info.w) >= 120 && Math.abs(model_info.w) <= 180) {
-                    model.view = 'front';
-                }
-                //console.log("Ring_status:" + model.view);
-                //console.log("hand_w:" + model_info.w);
-
-                //rear時はfrontにさせない
-                if (model.view == 'rear') {
-                    if (Math.abs(model_info.w) >= 0 && Math.abs(model_info.w) <= 60) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 0.00;
-                    }
-                }
-                //front時はrearにさせない
-                if (model.view == 'front') {
-                    if (Math.abs(model_info.w) >= 70 && Math.abs(model_info.w) <= 180) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 3.15;
-                    }
-                }
-                //console.log("rotated_ring_z:" + model.rotation.z);
-
-
-                //console.log("model_Ring scale:" + model.scale.x);
-
-                // 6.指輪の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
-                //パラメータ：90:0, 180:1.55→155/90 = 1.72
-                cylinder.scale.set(scaling, scaling, scaling);
-                cylinder.position.set(finger3Dx, finger3Dy, 0.0);
-                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
-                //console.log(cylinder.rotation.z);
-                */
                 model.visible = true;
             } else if (flag == false) {
                 model.visible = false;
-                //指輪のロスト時、表裏状態を初期化
-                model.view = null;
             }
         }
     }
@@ -904,67 +717,14 @@ function processARTryOn() {
                 // 4.顔の向きに応じてサングラスを回転
                 model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
 
-
-                /*
-                // 4.手首の回転軸に応じて指輪の軸を回転
-                var radians = THREE.Math.degToRad(model_info.angle + fixAngle);
-                //console.log("angle:" + radians);
-
-                var axis = new THREE.Vector3(-1, -1, -1);
-                var rotWorldMatrix = new THREE.Matrix4();
-                rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
-                rotWorldMatrix.multiply(model.matrix);
-                model.matrix = rotWorldMatrix;
-                model.quaternion.setFromAxisAngle(axis, radians);
-
-                // 5.指の回転角度に応じて指輪回転
-                //指輪の認識復帰時に表裏状態設定(指輪正面-180度、後ろ0度、可動範囲-180~180度)
-                if (model.view == null && Math.abs(model_info.w) >= 0.5 && Math.abs(model_info.w) <= 60) {
-                    model.view = 'rear';
-                } else if (model.view == null && Math.abs(model_info.w) >= 120 && Math.abs(model_info.w) <= 180) {
-                    model.view = 'front';
-                }
-                //console.log("Ring_status:" + model.view);
-                //console.log("hand_w:" + model_info.w);
-
-                //rear時はfrontにさせない
-                if (model.view == 'rear') {
-                    if (Math.abs(model_info.w) >= 0 && Math.abs(model_info.w) <= 60) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 0.00;
-                    }
-                }
-                //front時はrearにさせない
-                if (model.view == 'front') {
-                    if (Math.abs(model_info.w) >= 70 && Math.abs(model_info.w) <= 180) {
-                        model.rotation.z = THREE.Math.degToRad(model_info.w);
-                    } else {
-                        model.rotation.z = 3.15;
-                    }
-                }
-                //console.log("rotated_ring_z:" + model.rotation.z);
-
-
-                //console.log("model_Ring scale:" + model.scale.x);
-
-                // 6.指輪の位置変更に合わせてオクルージョン用の円柱もサイズ、位置変更
-                //パラメータ：90:0, 180:1.55→155/90 = 1.72
-                cylinder.scale.set(scaling, scaling, scaling);
-                cylinder.position.set(finger3Dx, finger3Dy, 0.0);
-                cylinder.rotation.set(0, 0, (90 - model_info.angle) * fixRotation);
-                //console.log(cylinder.rotation.z);
-                */
                 model.visible = true;
             } else if (flag == false) {
                 model.visible = false;
-                //指輪のロスト時、表裏状態を初期化
-                model.view = null;
             }
         }
     }
 
-    function renderFingerOcclusion(cylinder, model_info) {
+    function renderHeadOcclusion(cylinder, model_info) {
         // パラメータチューニング用変数
         var scaling_rate = 110;
         var fixModelPositionRate_x = 0.5;
