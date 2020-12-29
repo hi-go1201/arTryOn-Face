@@ -416,10 +416,8 @@ function processARTryOn() {
             console.log('An error happened');
         }
     );
-    
     //腕時計(loadに時間かかるので初期値null)
     var model_RoundGlasses = null;
-    /*
     loader.load('./obj/roundglasses_light.glb',
         function (gltf) {
             model_RoundGlasses = gltf.scene; // THREE.Group
@@ -442,7 +440,7 @@ function processARTryOn() {
             console.log('An error happened');
         }
     );
-    */
+    
     //腕時計(loadに時間かかるので初期値null)
     var model_SunGlasses = null;
     loader.load('./obj/sunglasses.glb',
