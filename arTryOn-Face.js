@@ -597,7 +597,7 @@ function processARTryOn() {
         var defaultModelScale = 0.05;
         var scaling_rate = 397;
         var fixModelPositionRate_x = 0.2;
-        var fixModelPositionRate_y = -0.11;
+        var fixModelPositionRate_y = -0.12;
 
         //モデル保有情報
         //model.name
@@ -667,7 +667,7 @@ function processARTryOn() {
                 //console.log("fix_Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.モデルを両目の中間点の検出座標に移動
-                model.position.set(finger3Dx, finger3Dy, 0.31);
+                model.position.set(finger3Dx, finger3Dy, 0.3);
                 //console.log("angle:" + model_info.angle);
                 //console.log("distance:" + model_info.distance);
 
