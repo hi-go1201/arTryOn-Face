@@ -263,6 +263,7 @@ async function detectFacemesh() {
         //処理に必要な各指の座標を取得
         //face mesh map.jpgを参考に取得する。
         //サングラスは両目の中間のキーポイント？イヤリングは四隅の右端、左端から一定の位置を指定する？
+        //サイズのスケーリングは顔の4隅(暫定的に顔の回転が影響しなそうな縦の長さ)で算出
         for (let i = 0; i < predictions.length; i++) {
             const keypoints = predictions[i].scaledMesh;
             const annotations = predictions[i].annotations;
@@ -273,32 +274,24 @@ async function detectFacemesh() {
             //顔の向きや傾き推定する処理追加
             headPoseEstimation(annotations.silhouette, rightEyeLower1, leftEyeLower1);
 
+            //サングラスは両目の中間のキーポイント168,6の中間座標
+            detectEyeArea.x = (keypoints[168][0] + keypoints[6][0]) * 0.5;
+            detectEyeArea.y = (keypoints[168][1] + keypoints[6][1]) * 0.5;
+            detectEyeArea.z = (keypoints[168][2] + keypoints[6][2]) * 0.5;
+
+            //サイズのスケーリングは顔の4隅(暫定的に顔の回転が影響しなそうな縦の長さ)で算出
+            detectEyeArea.distance = Math.sqrt(Math.pow(annotations.silhouette[0][0] - annotations.silhouette[18][0], 2) + Math.pow(annotations.silhouette[0][1] - annotations.silhouette[18][1], 2));
+
             // Log facial keypoints.
-            for (let i = 0; i < keypoints.length; i++) {
-                const [x, y, z] = keypoints[i];
-
-                //サングラスは両目の中間のキーポイント168,6の中間座標
-                if (i == 168 || i == 6) {
-                    //ctx.beginPath();
-                    //ctx.fillStyle = "#FF0000";
-                    //ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
-                    //ctx.fill();
-
-                    //console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
-
-                    //サングラスの中心座標算出
-                    detectEyeArea.x += x;
-                    detectEyeArea.y += y;
-                    detectEyeArea.z += z;
-
-                }
-            }
+            //for (let i = 0; i < keypoints.length; i++) {
+                //const [x, y, z] = keypoints[i];
+                //ctx.beginPath();
+                //ctx.fillStyle = "#FF0000";
+                //ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
+                //ctx.fill();
+                //console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
+            //}
         }
-
-        detectEyeArea.x *= 0.5;
-        detectEyeArea.y *= 0.5;
-        detectEyeArea.z *= 0.5;
-        detectEyeArea.distance = Math.sqrt(Math.pow(detectEyeArea.x * 2 - detectEyeArea.x, 2) + Math.pow(detectEyeArea.y * 2 - detectEyeArea.y, 2));
         //console.log("Glasses Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
         //console.log("Glasses Distance:" + detectEyeArea.distance);
         detectEyeArea_flag = true;
@@ -392,7 +385,7 @@ function processARTryOn() {
     //3Dモデルをロード。今回はglb形式を使用  
     const loader = new THREE.GLTFLoader();
 
-    //腕時計(loadに時間かかるので初期値null)
+    //眼鏡(loadに時間かかるので初期値null)
     var model_Glasses = null;
     loader.load('./obj/glasses_light.glb',
         function (gltf) {
@@ -416,7 +409,7 @@ function processARTryOn() {
             console.log('An error happened');
         }
     );
-    //腕時計(loadに時間かかるので初期値null)
+    //丸眼鏡(loadに時間かかるので初期値null)
     var model_RoundGlasses = null;
     loader.load('./obj/roundglasses_light.glb',
         function (gltf) {
@@ -440,15 +433,15 @@ function processARTryOn() {
             console.log('An error happened');
         }
     );
-    
-    //腕時計(loadに時間かかるので初期値null)
+
+    //サングラス(loadに時間かかるので初期値null)
     var model_SunGlasses = null;
     loader.load('./obj/sunglasses.glb',
         function (gltf) {
             model_SunGlasses = gltf.scene; // THREE.Group
             model_SunGlasses.name = "SunGlasses"
             model_SunGlasses.visible = false;
-            model_SunGlasses.scale.set(0.08, 0.08, 0.08);
+            model_SunGlasses.scale.set(0.09, 0.09, 0.09);
             model_SunGlasses.position.set(0.0, 0.0, 0.0);
             model_SunGlasses.rotation.x = 0.0;
             model_SunGlasses.rotation.y = 0.0;
@@ -466,13 +459,13 @@ function processARTryOn() {
         }
     );
 
-    //腕時計オクルージョン用の円柱追加 colorWrite=falseで色情報無くして深度情報のみ描画できる
-    var watch_cylinder = new THREE.Mesh(
+    //顔オクルージョン用の円柱追加 colorWrite=falseで色情報無くして深度情報のみ描画できる
+    var face_cylinder = new THREE.Mesh(
         new THREE.CylinderGeometry(0.1, 0.1, 0.4, 50),
         new THREE.MeshPhongMaterial({ color: 0x00FF00, opacity: 1.0, transparent: false, colorWrite: false })
     );
-    watch_cylinder.position.set(0, 0.5, -0.15); //(x,y,z)
-    watch_cylinder.rotation.z = 1.57
+    face_cylinder.position.set(0, 0.5, -0.15); //(x,y,z)
+    face_cylinder.rotation.z = 1.57
     //sceneオブジェクトに追加
     //scene.add(watch_cylinder);
 
@@ -537,21 +530,21 @@ function processARTryOn() {
                 //AR腕時計試着
                 if (model_RoundGlasses != null && model_RoundGlasses.visible == true) model_RoundGlasses.visible = false;
                 if (model_SunGlasses != null && model_SunGlasses.visible == true) model_SunGlasses.visible = false;
-                renderGlasses(model_Glasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                renderGlasses(model_Glasses, detectEyeArea, detectEyeArea_flag);
                 break;
 
             case "RoundGlasses":
                 //AR腕時計試着
                 if (model_Glasses != null && model_Glasses.visible == true) model_Glasses.visible = false;
                 if (model_SunGlasses != null && model_SunGlasses.visible == true) model_SunGlasses.visible = false;
-                renderRoundGlasses(model_RoundGlasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                renderRoundGlasses(model_RoundGlasses, detectEyeArea, detectEyeArea_flag);
                 break;
 
             case "SunGlasses":
                 //AR腕時計試着
                 if (model_Glasses != null && model_Glasses.visible == true) model_Glasses.visible = false;
                 if (model_RoundGlasses != null && model_RoundGlasses.visible == true) model_RoundGlasses.visible = false;
-                renderSunGlasses(model_SunGlasses, watch_cylinder, detectEyeArea, detectEyeArea_flag);
+                renderSunGlasses(model_SunGlasses, detectEyeArea, detectEyeArea_flag);
                 break;
 
             default:
@@ -567,15 +560,13 @@ function processARTryOn() {
         requestAnimationFrame(render);
     }
 
-    function renderGlasses(model, cylinder, model_info, flag) {
+    function renderGlasses(model, model_info, flag) {
 
         // パラメータチューニング用変数
-        var defaultModelScale = 16.2;
-        var scaling_rate = 408;
+        var defaultModelScale = 0.056;
+        var scaling_rate = 397;
         var fixModelPositionRate_x = 0.28;
         var fixModelPositionRate_y = -0.1;
-        var fixAngle = 40;
-        var fixRotation = 0.0172;
 
         //モデル保有情報
         //model.name
@@ -589,9 +580,9 @@ function processARTryOn() {
                 // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
                 // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
                 // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
-                //var scaling = scaling_rate / model_info.distance;
-                //console.log("model scaling:" + scaling);
-                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+                var scaling = model_info.distance / scaling_rate;
+                console.log("model scaling:" + scaling);
+                model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
@@ -619,15 +610,13 @@ function processARTryOn() {
         }
     }
 
-    function renderRoundGlasses(model, cylinder, model_info, flag) {
+    function renderRoundGlasses(model, model_info, flag) {
 
         // パラメータチューニング用変数
-        var defaultModelScale = 16.2;
-        var scaling_rate = 408;
+        var defaultModelScale = 0.05;
+        var scaling_rate = 397;
         var fixModelPositionRate_x = 0.2;
         var fixModelPositionRate_y = -0.12;
-        var fixAngle = 40;
-        var fixRotation = 0.0172;
 
         //モデル保有情報
         //model.name
@@ -641,9 +630,9 @@ function processARTryOn() {
                 // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
                 // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
                 // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
-                //var scaling = scaling_rate / model_info.distance;
-                //console.log("model scaling:" + scaling);
-                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+                var scaling = model_info.distance / scaling_rate;
+                console.log("model scaling:" + scaling);
+                model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
@@ -671,15 +660,13 @@ function processARTryOn() {
         }
     }
 
-    function renderSunGlasses(model, cylinder, model_info, flag) {
+    function renderSunGlasses(model, model_info, flag) {
 
         // パラメータチューニング用変数
-        var defaultModelScale = 16.2;
-        var scaling_rate = 408;
+        var defaultModelScale = 0.09;
+        var scaling_rate = 397;
         var fixModelPositionRate_x = 0.4;
         var fixModelPositionRate_y = -0.12;
-        var fixAngle = 40;
-        var fixRotation = 0.0172;
 
         //モデル保有情報
         //model.name
@@ -693,9 +680,9 @@ function processARTryOn() {
                 // 1.サングラス検出領域(両目の中間2点の直線の長さ)に合わせて3Dモデルの拡大縮小
                 // →顔の前後移動でそこまで直線変化しない、かつ顔の向きや角度で直線の変化影響大のため、今回はスケーリング考慮しない
                 // 両目の中間2点の直線の長さ = 408でGlassesのscale:16.2。顔近いほど直線短くなる
-                //var scaling = scaling_rate / model_info.distance;
-                //console.log("model scaling:" + scaling);
-                //model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
+                var scaling = model_info.distance / scaling_rate;
+                console.log("model scaling:" + scaling);
+                model.scale.set(defaultModelScale * scaling, defaultModelScale * scaling, defaultModelScale * scaling);
 
                 // 2.指の座標を3D空間座標に変換 0:-0.4,196.5:0.0,392:0.4
                 // 左右のpositionが−1~1じゃない場合にパラメータ調整必要。現状はpixel3aに最適化
