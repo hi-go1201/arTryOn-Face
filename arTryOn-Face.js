@@ -292,10 +292,11 @@ async function detectFacemesh() {
             //ctx.fill();
             //console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
             //}
+
+            //console.log("Glasses Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
+            console.log("Glasses Distance:" + detectEyeArea.distance);
+            detectEyeArea_flag = true;
         }
-        //console.log("Glasses Area:" + detectEyeArea.x + "," + detectEyeArea.y + "," + detectEyeArea.z);
-        //console.log("Glasses Distance:" + detectEyeArea.distance);
-        detectEyeArea_flag = true;
 
     } else {
         detectEyeArea_flag = false;
@@ -352,7 +353,7 @@ function headPoseEstimation(faces, rightEye, leftEye) {
     }
 
     headOrientation = { yaw: yaw + Math.PI, pitch: pitch, roll: -(roll - Math.PI / 2) };
-    console.log("yaw:" + yaw + ", pitch:" + pitch + ", roll:" + roll);
+    //console.log("yaw:" + yaw + ", pitch:" + pitch + ", roll:" + roll);
 
 }
 
@@ -623,8 +624,6 @@ function processARTryOn() {
 
                 // 3.モデルを両目の中間点の検出座標に移動
                 model.position.set(finger3Dx, finger3Dy, 0.0);
-                //console.log("angle:" + model_info.angle);
-                //console.log("distance:" + model_info.distance);
 
                 // 4.顔の向きに応じてモデルを回転
                 model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
@@ -668,8 +667,6 @@ function processARTryOn() {
 
                 // 3.モデルを両目の中間点の検出座標に移動
                 model.position.set(finger3Dx, finger3Dy, 0.3);
-                //console.log("angle:" + model_info.angle);
-                //console.log("distance:" + model_info.distance);
 
                 // 4.顔の向きに応じてモデルを回転
                 model.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
@@ -710,7 +707,7 @@ function processARTryOn() {
             // 4.顔の向きに応じてモデルを回転
             if (headOrientation != null) {
                 cylinder.rotation.set(-headOrientation.yaw, -headOrientation.pitch, headOrientation.roll);
-                //console.log(cylinder.rotation.z);
+                //console.log("cylinderRotation yaw:" + cylinder.rotation.x + ", pitch:" + cylinder.rotation.y + ", roll:" + cylinder.rotation.z);
             }
         }
     }
