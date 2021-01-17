@@ -1,5 +1,9 @@
 // whether streaming video from the camera.
 let streaming = false;
+var videoElement = document.createElement("video");
+document.body.append(videoElement);
+videoElement.id = "video";
+videoElement.style.display = "none";
 let video = document.getElementById("video");
 
 // Facemesh
@@ -72,8 +76,8 @@ function startCamera() {
         video: {
             facingMode: "user",
             zoom: true,
-            width: { min: 800, ideal: 1280, max: 1920 },
-            height: { min: 600, ideal: 720, max: 1080 }
+            width: { min: 640, ideal: 1920, max: 1920 },
+            height: { min: 480, ideal: 1080, max: 1080 }
         }
     })
         .then(function (stream) {
@@ -113,6 +117,8 @@ function startVideoProcessing() {
 }
 
 async function processVideo() {
+    //videoソースが画面解像度より小さい時の事前修正が必要(PC,ipadでありがち)
+    
     //videoソース読み込み
     let vc = new cv.VideoCapture(video);
     let src = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
@@ -120,85 +126,19 @@ async function processVideo() {
 
     //スマホ用にvideoソースの解像度修正
     let dst = new cv.Mat();
-    let adjustVideoSrc = new cv.Mat();
-    let adjustVideoSrc2 = new cv.Mat();
-
-    //videoソースが画面解像度より小さい時の事前修正が必要(PC,ipadでありがち)
-    // ToDo:AR.jsなど使うとより良く汎用化できそう？
-    if (window.innerWidth > video.videoWidth) {
-        //1-1 横揃える
-        var adjustVideoHeight = parseInt(video.videoHeight * (window.innerWidth / video.videoWidth));
-        //console.log("adjust_video_size 1-1:" + window.innerWidth + "," + adjustVideoHeight);
-        var adjustVideoSize = new cv.Size(window.innerWidth, adjustVideoHeight);
-        cv.resize(src, adjustVideoSrc, adjustVideoSize, 0, 0, cv.INTER_AREA);
-
-        //1-2 縦揃える
-        if (window.innerHeight > adjustVideoSrc.rows) {
-            var adjustVideoWidth = parseInt(adjustVideoSrc.cols * (window.innerHeight / adjustVideoSrc.rows));
-            //console.log("adjust_video_size 1-2:" + adjustVideoWidth + "," + adjustVideoSrc.rows);
-            adjustVideoSize = new cv.Size(adjustVideoWidth, window.innerHeight);
-            cv.resize(adjustVideoSrc, adjustVideoSrc2, adjustVideoSize, 0, 0, cv.INTER_AREA);
-            //クロップ
-            var x1 = parseInt((adjustVideoSrc2.cols / 2) - (window.innerWidth / 2));
-            var y1 = parseInt((adjustVideoSrc2.rows / 2) - (window.innerHeight / 2));
-            let rect = new cv.Rect(x1, y1, window.innerWidth, window.innerHeight);
-            dst = adjustVideoSrc2.roi(rect);
-
-        } else {
-
-            //1-2 縦クロップして揃える
-            //console.log("adjust_video_size 1-2:" + window.innerWidth + "," + window.innerHeight);
-            var x1 = parseInt((adjustVideoSrc.cols / 2) - (window.innerWidth / 2));
-            var y1 = parseInt((adjustVideoSrc.rows / 2) - (window.innerHeight / 2));
-            let rect = new cv.Rect(x1, y1, window.innerWidth, window.innerHeight);
-            dst = adjustVideoSrc.roi(rect);
-
-        }
-    } else if (window.innerHeight > video.videoHeight) {
-        //2-1 縦揃える
-        var adjustVideoWidth = parseInt(video.videoWidth * (window.innerHeight / video.videoHeight));
-        //console.log("adjust_video_size 2-1:" + adjustVideoWidth + "," + window.innerHeight);
-        var adjustVideoSize = new cv.Size(adjustVideoWidth, window.innerHeight);
-        cv.resize(src, adjustVideoSrc, adjustVideoSize, 0, 0, cv.INTER_AREA);
-
-        //2-2 横揃える
-        if (window.innerWidth > adjustVideoSrc.cols) {
-            var adjustVideoHeight = parseInt(adjustVideoSrc.rows * (window.innerWidth / adjustVideoSrc.cols));
-            //console.log("adjust_video_size 2-2:" + window.innerWidth + "," + adjustVideoHeight);
-            adjustVideoSize = new cv.Size(window.innerWidth, adjustVideoHeight);
-            cv.resize(adjustVideoSrc, adjustVideoSrc2, adjustVideoSize, 0, 0, cv.INTER_AREA);
-            //クロップ
-            var x1 = parseInt((adjustVideoSrc2.cols / 2) - (window.innerWidth / 2));
-            var y1 = parseInt((adjustVideoSrc2.rows / 2) - (window.innerHeight / 2));
-            let rect = new cv.Rect(x1, y1, window.innerWidth, window.innerHeight);
-            dst = adjustVideoSrc2.roi(rect);
-
-        } else {
-
-            //2−2 横クロップして揃える
-            //console.log("adjust_video_size 2-2:" + window.innerWidth + "," + window.innerHeight);
-            var x1 = parseInt((adjustVideoSrc.cols / 2) - (window.innerWidth / 2));
-            var y1 = parseInt((adjustVideoSrc.rows / 2) - (window.innerHeight / 2));
-            let rect = new cv.Rect(x1, y1, window.innerWidth, window.innerHeight);
-            dst = adjustVideoSrc.roi(rect);
-
-        }
-    } else {
-        //3 中心をクロップして揃える
-        //console.log("adjust_video_size 3:" + window.innerWidth + "," + window.innerHeight);
-        var x1 = parseInt((video.videoWidth / 2) - (window.innerWidth / 2));
-        var y1 = parseInt((video.videoHeight / 2) - (window.innerHeight / 2));
-        let rect = new cv.Rect(x1, y1, window.innerWidth, window.innerHeight);
-        dst = src.roi(rect);
-    }
+    //指定した解像度になるように、アスペクト比を固定して、リサイズする
+    var h = video.videoHeight;
+    var w = video.videoWidth;
+    var scale = Math.pow((window.innerWidth * window.innerHeight) / (w * h), 0.5);
+    //console.log("scale:" + scale);
+    let dsize = new cv.Size(window.innerWidth, window.innerHeight);
+    cv.resize(src, dst, dsize, scale, scale, cv.INTER_AREA);
 
     //frontカメラのため、鏡表示になるよう左右反転
     cv.flip(dst, dst, 1);
 
     cv.imshow('canvas', dst);
     src.delete();
-    adjustVideoSrc.delete();
-    adjustVideoSrc2.delete();
     dst.delete();
     await detectFacemesh();
     requestAnimationFrame(processVideo);
