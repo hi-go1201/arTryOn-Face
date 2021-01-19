@@ -495,7 +495,7 @@ function processARTryOn() {
         var defaultModelScale = 0.056;
         var scaling_rate = 397;
         var fixModelPositionRate_x = 0.3;
-        var fixModelPositionRate_y = 0.0;
+        var fixModelPositionRate_y = -0.1;
 
         //モデル保有情報
         //model.name
