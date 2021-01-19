@@ -494,7 +494,7 @@ function processARTryOn() {
         // パラメータチューニング用変数
         var defaultModelScale = 0.056;
         var scaling_rate = 397;
-        var fixModelPositionRate_x = 0.28;
+        var fixModelPositionRate_x = 0.0;
         var fixModelPositionRate_y = -0.1;
 
         //モデル保有情報
@@ -515,8 +515,8 @@ function processARTryOn() {
                 var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
                 //console.log("Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
                 //移動座標をパラメータ調整
-                finger3Dx = finger3Dx * fixModelPositionRate_x;
-                finger3Dy = finger3Dy * 0.5 + fixModelPositionRate_y;
+                finger3Dx = finger3Dx + fixModelPositionRate_x;
+                finger3Dy = finger3Dy + fixModelPositionRate_y;
                 //console.log("fix_Glasses 3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
                 // 3.モデルを両目の中間点の検出座標に移動
@@ -621,8 +621,8 @@ function processARTryOn() {
     function renderHeadOcclusion(cylinder, model_info) {
         // パラメータチューニング用変数
         var scaling_rate = 397;
-        var fixModelPositionRate_x = 0.5;
-        var fixModelPositionRate_y = 0.8;
+        var fixModelPositionRate_x = 0.0;
+        var fixModelPositionRate_y = 0.0;
 
         if (model_info.x != 0) {
             // 1.顔の4隅の直線の長さに合わせて3Dモデルの拡大縮小
@@ -637,8 +637,8 @@ function processARTryOn() {
             var finger3Dy = -(model_info.y * 2 / window.innerHeight) + 1.0;
             //console.log("finger3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
             //移動座標をパラメータ調整
-            finger3Dx = finger3Dx * fixModelPositionRate_x;
-            finger3Dy = finger3Dy * fixModelPositionRate_y;
+            finger3Dx = finger3Dx + fixModelPositionRate_x;
+            finger3Dy = finger3Dy + fixModelPositionRate_y;
             //console.log("fix_Cylinder3Dpos:[", + finger3Dx + "," + finger3Dy + "]");
 
             // 3.モデルを顔の検出座標に移動
